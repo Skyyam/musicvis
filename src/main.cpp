@@ -334,17 +334,6 @@ public:
 		{
 			glfwGetCursorPos(window, &posX, &posY);
 			std::cout << "Pos X " << posX <<  " Pos Y " << posY << std::endl;
-
-			//change this to be the points converted to WORLD
-			//THIS IS BROKEN< YOU GET TO FIX IT - yay!
-			newPt[0] = 0;
-			newPt[1] = 0;
-
-			std::cout << "converted:" << newPt[0] << " " << newPt[1] << std::endl;
-			glBindBuffer(GL_ARRAY_BUFFER, MeshPosID);
-			//update the vertex array with the updated points
-			glBufferSubData(GL_ARRAY_BUFFER, sizeof(float)*6, sizeof(float)*2, newPt);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 	}
 
