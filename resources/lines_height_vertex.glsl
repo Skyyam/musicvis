@@ -13,7 +13,6 @@ uniform vec3 camoff;
 
 void main()
 {
-
 	vec2 texcoords=vertTex;
 	float t=1./1000.;
 	texcoords -= vec2(camoff.x,camoff.z)*t;
@@ -22,8 +21,6 @@ void main()
 
 	float audioheight = texture(tex, vec2(texcoords.y,texcoords.x)).r;
 	
-
-
 	vec4 tpos =  vec4(vertPos, 1.0);
 	tpos.z -=camoff.z;
 	tpos.x -=camoff.x;

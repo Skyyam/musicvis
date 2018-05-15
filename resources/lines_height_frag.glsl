@@ -11,13 +11,11 @@ uniform vec3 campos;
 uniform vec3 bgcolor;
 void main()
 {
+   float len = length(frag_pos.xz+campos.xz);
+   len-=350;
+   len/=140.;
+   len=clamp(len,0,1);
 
-float len = length(frag_pos.xz+campos.xz);
-len-=350;
-len/=140.;
-len=clamp(len,0,1);
-
-color.a=1;
-color.rgb = vec3(0.5,0.4,1.0) * (1 - len) + bgcolor*len;
-
+   color.a=1;
+   color.rgb = vec3(0.5,0.4,1.0) * (1 - len) + bgcolor*len;
 }

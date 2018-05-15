@@ -8,9 +8,8 @@ uniform sampler2D tex2;
 
 void main()
 {
-
-color.rgb = texture(tex, frag_tex).rgb;
-//color.rg = frag_tex;
-//color.b = 0;
-color.a=1;
+   color.rgb = texture(tex, frag_tex).rgb;
+   //color.rg = frag_tex;
+   //color.b = 0;
+   color.a=1;
 }

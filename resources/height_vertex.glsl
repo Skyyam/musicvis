@@ -37,8 +37,6 @@ void main()
 	tpos.y += baseheight*50*(1.-audioheight)+blackholedepth;
 	vertex_pos = tpos.xyz;
 
-
-
 	gl_Position = tpos;
 
 	vertex_tex = vertTex;
