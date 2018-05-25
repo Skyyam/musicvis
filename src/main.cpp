@@ -21,7 +21,7 @@ On Windows, it whould capture "what you here" automatically, as long as you have
 #include <thread>
 using namespace std;
 using namespace glm;
-shared_ptr<Shape> shape;
+shared_ptr<Shape> shape, sphere;
 #define MESHSIZE 1000
 extern captureAudio actualAudioData;
 extern int running;
@@ -46,8 +46,9 @@ fftw_complex * fft(int &length)
 	int size = 0;
 	actualAudioData.readAudio(data, size);
 	length = size / 8;
-	if (size == 0)
-		return NULL;
+   if (size == 0) {
+      return NULL;
+   }
 
 	double *samples = new double[length];
 	for (int ii = 0; ii < length; ii++)
@@ -77,7 +78,7 @@ BYTE delayfilter(BYTE old, BYTE actual, float mul)
 	else if (fres < 0)fres = 0;
 	return (BYTE)fres;
 }
-
+float beats = 0;
 void write_to_tex(GLuint texturebuf,int resx,int resy)
 {
 	/*BYTE *data = NULL;
@@ -111,16 +112,31 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
 	//		{
 	//		texels[x * 4 + y*resx * 4] = texels[x * 4 + (y - 1)*resx * 4];
 	//		}
-	static float arg = 0;
+	/*static float arg = 0;
 	arg += 0.1;
 	float erg = sin(arg) + 1;
 	erg *= 100;
-	int y = 0;
+	int y = 0;*/
 	fftw_complex *outfft = fft(length);
-	float fm = 0;
-	//low
-	for (int x = 0; x < resx; ++x)
-		{
+	//float fm = 0;
+	
+   float nbeats = 0;
+   int lowten = (length / 2) / 10;
+   for (int x = 0; x < lowten; ++x)
+   {
+      nbeats+= sqrt(outfft[x][0] * outfft[x][0] + outfft[x][1] * outfft[x][1]);
+   }
+   if (lowten != 0) {
+      nbeats /= (float)lowten;
+   }
+   float diff = nbeats - beats;
+   beats = beats + diff * 0.1;
+   if (beats < nbeats) {
+      beats = nbeats;
+   }
+	/*//low
+   for (int x = 0; x < resx; ++x)
+	{
 		if (x >= length/2)break;
 		float fftd = sqrt(outfft[x][0]* outfft[x][0]+ outfft[x][1]* outfft[x][1]);
 		fm = max(fm, abs(fftd));
@@ -129,7 +145,7 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
 		texels[x * 4 + y*resx * 4 + 1] = (BYTE)erg;
 		texels[x * 4 + y*resx * 4 + 2] = (BYTE)erg;
 		texels[x * 4 + y*resx * 4 + 3] = (BYTE)erg;
-		}
+	}
 	//high
 	for (int y = 0; y < resx; ++y)
 	{
@@ -143,13 +159,14 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
 		texels[ y*resx * 4 + 3] = (BYTE)erg;
 	}
 	
-	for (int y = 1; y <resy; y++)
-		for (int x = 1; x < resx; ++x)
-			{
-			int erg = (int)texels[(y - 1)*resx * 4] + (int)texels[x * 4];
-			erg /= 3;
-			texels[x * 4 + y*resx * 4] = erg;
-			}
+   for (int y = 1; y < resy; y++) {
+      for (int x = 1; x < resx; ++x)
+      {
+         int erg = (int)texels[(y - 1)*resx * 4] + (int)texels[x * 4];
+         erg /= 3;
+         texels[x * 4 + y * resx * 4] = erg;
+      }
+   }*/
 	//cout << length << endl;
 	//fftw_complex fout[10000];
 	//memcpy(fout, outfft, sizeof(fftw_complex)*length);
@@ -157,10 +174,55 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
 	glBindTexture(GL_TEXTURE_2D, texturebuf);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, TEXSIZE, TEXSIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
 	glGenerateMipmap(GL_TEXTURE_2D);
-
-
-
 }
+
+/*
+void size(int resx, int resy) {
+   int length;
+
+   static float arg = 0;
+   arg += 0.1;
+   float erg = sin(arg) + 1;
+   erg *= 100;
+   int y = 0;
+   fftw_complex *outfft = fft(length);
+   float fm = 0;
+   //low
+   for (int x = 0; x < resx; ++x)
+   {
+      if (x >= length / 2)break;
+      float fftd = sqrt(outfft[x][0] * outfft[x][0] + outfft[x][1] * outfft[x][1]);
+      fm = max(fm, abs(fftd));
+      BYTE oldval = texels[x * 4 + y * resx * 4 + 0];
+      texels[x * 4 + y * resx * 4 + 0] = delayfilter(oldval, (BYTE)(fftd*60.0), 15);
+      texels[x * 4 + y * resx * 4 + 1] = (BYTE)erg;
+      texels[x * 4 + y * resx * 4 + 2] = (BYTE)erg;
+      texels[x * 4 + y * resx * 4 + 3] = (BYTE)erg;
+   }
+   //high
+   for (int y = 0; y < resx; ++y)
+   {
+      if ((y + resx) >= length / 2)break;
+      float fftd = sqrt(outfft[y + resx][0] * outfft[y + resx][0] + outfft[y + resx][1] * outfft[y + resx][1]);
+      fm = max(fm, abs(fftd));
+      BYTE oldval = texels[y*resx * 4 + 0];
+      texels[y*resx * 4 + 0] = delayfilter(oldval, (BYTE)(fftd*60.0), 15);
+      texels[y*resx * 4 + 1] = (BYTE)erg;
+      texels[y*resx * 4 + 2] = (BYTE)erg;
+      texels[y*resx * 4 + 3] = (BYTE)erg;
+   }
+
+   for (int y = 1; y < resy; y++) {
+      for (int x = 1; x < resx; ++x)
+      {
+         int erg = (int)texels[(y - 1)*resx * 4] + (int)texels[x * 4];
+         erg /= 3;
+         texels[x * 4 + y * resx * 4] = erg;
+      }
+   }
+}
+*/
+
 double get_last_elapsed_time()
 {
 	static double lasttime = glfwGetTime();
@@ -184,11 +246,11 @@ public:
 		float speed = 0;
 		if (w == 1)
 		{
-			speed = 90*ftime;
+			speed = 3*ftime;
 		}
 		else if (s == 1)
 		{
-			speed = -90*ftime;
+			speed = -3*ftime;
 		}
 		float yangle=0;
 		if (a == 1)
@@ -231,7 +293,7 @@ public:
 	WindowManager * windowManager = nullptr;
 
 	// Our shader program
-	std::shared_ptr<Program> prog, heightshader, skyprog,linesshader;
+	std::shared_ptr<Program> prog, heightshader, skyprog,linesshader, prog_sphere;
 
 	// Contains vertex information for OpenGL
 	GLuint VertexArrayID;
@@ -420,15 +482,19 @@ public:
 	void initGeom()
 	{
 		//initialize the net mesh
-		init_mesh();
+		//init_mesh();
 
 		string resourceDirectory = "../resources" ;
 		// Initialize mesh.
-		shape = make_shared<Shape>();
-		//shape->loadMesh(resourceDirectory + "/t800.obj");
+		/*shape = make_shared<Shape>();
 		shape->loadMesh(resourceDirectory + "/sphere.obj");
 		shape->resize();
 		shape->init();
+*/
+      sphere = make_shared<Shape>();
+      sphere->loadMesh(resourceDirectory + "/sphere.obj");
+      sphere->resize();
+      sphere->init();
 
 		int width, height, channels;
 		char filepath[1000];
@@ -446,7 +512,9 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
-		//texture 2
+		
+      /*
+      //texture 2
 		str = resourceDirectory + "/sky1.jpg";
 		strcpy(filepath, str.c_str());
 		data = stbi_load(filepath, &width, &height, &channels, 4);
@@ -477,33 +545,13 @@ public:
 
 		//[TWOTEXTURES]
 		//set the 2 textures to the correct samplers in the fragment shader:
-		GLuint Tex1Location = glGetUniformLocation(prog->pid, "tex");//tex, tex2... sampler in the fragment shader
-		GLuint Tex2Location = glGetUniformLocation(prog->pid, "tex2");
+		GLuint Tex1Location = glGetUniformLocation(prog_sphere->pid, "tex");//tex, tex2... sampler in the fragment shader
+		GLuint Tex2Location = glGetUniformLocation(prog_sphere->pid, "tex2");
 		// Then bind the uniform samplers to texture units:
-		glUseProgram(prog->pid);
+		glUseProgram(prog_sphere->pid);
 		glUniform1i(Tex1Location, 0);
 		glUniform1i(Tex2Location, 1);
-
-		Tex1Location = glGetUniformLocation(heightshader->pid, "tex");//tex, tex2... sampler in the fragment shader
-		Tex2Location = glGetUniformLocation(heightshader->pid, "tex2");
-		// Then bind the uniform samplers to texture units:
-		glUseProgram(heightshader->pid);
-		glUniform1i(Tex1Location, 0);
-		glUniform1i(Tex2Location, 1);
-
-		Tex1Location = glGetUniformLocation(skyprog->pid, "tex");//tex, tex2... sampler in the fragment shader
-		Tex2Location = glGetUniformLocation(skyprog->pid, "tex2");
-		// Then bind the uniform samplers to texture units:
-		glUseProgram(skyprog->pid);
-		glUniform1i(Tex1Location, 0);
-		glUniform1i(Tex2Location, 1);
-		
-		Tex1Location = glGetUniformLocation(linesshader->pid, "tex");//tex, tex2... sampler in the fragment shader
-		Tex2Location = glGetUniformLocation(linesshader->pid, "tex2");
-		// Then bind the uniform samplers to texture units:
-		glUseProgram(linesshader->pid);
-		glUniform1i(Tex1Location, 0);
-		glUniform1i(Tex2Location, 1);
+      */
 
 
 		// dynamic audio texture
@@ -521,7 +569,7 @@ public:
 		glBindTexture(GL_TEXTURE_BUFFER, 0);
 		//glBindImageTexture(2, AudioTex, 0, GL_TRUE, 0, GL_READ_WRITE, GL_RGBA32F);
 		*/
-		for (int ii = 0; ii < TEXSIZE*TEXSIZE * 4; ii++)
+		/*for (int ii = 0; ii < TEXSIZE*TEXSIZE * 4; ii++)
 			texels[ii] = 0;
 		glGenTextures(1, &AudioTex);
 		glActiveTexture(GL_TEXTURE0);
@@ -530,94 +578,42 @@ public:
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, TEXSIZE, TEXSIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, TEXSIZE, TEXSIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, texels);*/
 		//glGenerateMipmap(GL_TEXTURE_2D);
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	}
 	
 	//General OGL initialization - set OGL state here
 	void init(const std::string& resourceDirectory)
 	{
-		
-
 		GLSL::checkVersion();
 
 		// Set background color.
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		// Enable z-buffer test.
 		glEnable(GL_DEPTH_TEST);
-		// Initialize the GLSL program.
-		skyprog = std::make_shared<Program>();
-		skyprog->setVerbose(true);
-		skyprog->setShaderNames(resourceDirectory + "/sky_vertex.glsl", resourceDirectory + "/sky_fragment.glsl");
-		if (!skyprog->init())
-		{
-			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
-			exit(1);
-		}
-		skyprog->addUniform("P");
-		skyprog->addUniform("V");
-		skyprog->addUniform("M");
-		skyprog->addAttribute("vertPos");
-		skyprog->addAttribute("vertTex");
-
-		// Initialize the GLSL program.
-		prog = std::make_shared<Program>();
-		prog->setVerbose(true);
-		prog->setShaderNames(resourceDirectory + "/shader_vertex.glsl", resourceDirectory + "/shader_fragment.glsl");
-		if (!prog->init())
-		{
-			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
-			exit(1);
-		}
-		prog->addUniform("P");
-		prog->addUniform("V");
-		prog->addUniform("M");
-		prog->addUniform("campos");
-		prog->addAttribute("vertPos");
-		prog->addAttribute("vertNor");
-		prog->addAttribute("vertTex");
-
-		// Initialize the GLSL program.
-		heightshader = std::make_shared<Program>();
-		heightshader->setVerbose(true);
-		heightshader->setShaderNames(resourceDirectory + "/height_vertex.glsl", resourceDirectory + "/height_frag.glsl", resourceDirectory + "/geometry.glsl");
-		if (!heightshader->init())
-		{
-			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
-			exit(1);
-		}
-		heightshader->addUniform("P");
-		heightshader->addUniform("V");
-		heightshader->addUniform("M");
-		heightshader->addUniform("camoff");
-		heightshader->addUniform("campos");
-		heightshader->addAttribute("vertPos");
-		heightshader->addAttribute("vertTex");
-		heightshader->addUniform("bgcolor");
-		heightshader->addUniform("renderstate");
-
-		// Initialize the GLSL program.
-		linesshader = std::make_shared<Program>();
-		linesshader->setVerbose(true);
-		linesshader->setShaderNames(resourceDirectory + "/lines_height_vertex.glsl", resourceDirectory + "/lines_height_frag.glsl", resourceDirectory + "/lines_geometry.glsl");
-		if (!linesshader->init())
-		{
-			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
-			exit(1);
-		}
-		linesshader->addUniform("P");
-		linesshader->addUniform("V");
-		linesshader->addUniform("M");
-		linesshader->addUniform("camoff");
-		linesshader->addUniform("campos");
-		linesshader->addAttribute("vertPos");
-		linesshader->addAttribute("vertTex");
-		linesshader->addUniform("bgcolor");
 		
+		
+      // Initialize the GLSL program.
+      prog_sphere = std::make_shared<Program>();
+      prog_sphere->setVerbose(true);
+      prog_sphere->setShaderNames(resourceDirectory + "/shader_vertex_sphere.glsl", resourceDirectory + "/shader_fragment_sphere.glsl");
+      if (!prog_sphere->init())
+      {
+         std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+         exit(1);
+      }
+      prog_sphere->addUniform("P");
+      prog_sphere->addUniform("V");
+      prog_sphere->addUniform("M");
+    //  prog_sphere->addUniform("camoff");
+     // prog_sphere->addUniform("campos");
+      prog_sphere->addAttribute("vertPos");
+      prog_sphere->addAttribute("vertTex");
+      prog_sphere->addAttribute("vertNor");
+     // prog_sphere->addUniform("bgcolor");
 	}
 
 
@@ -643,15 +639,16 @@ public:
 		glViewport(0, 0, width, height);
 
 		// Clear framebuffer.
-		glClearColor(0.8f, 0.8f, 1.0f, 1.0f);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Create the matrix stacks - please leave these alone for now
 		
 		glm::mat4 V, M, P; //View, Model and Perspective matrix
 		
-		V = mycam.process(frametime);
-		M = glm::mat4(1);
+		//V = mycam.process(frametime);
+      V = glm::mat4(1);
+      M = glm::mat4(1);
 		// Apply orthographic projection....
 		P = glm::ortho(-1 * aspect, 1 * aspect, -1.0f, 1.0f, -2.0f, 10000.0f);		
 		if (width < height)
@@ -661,116 +658,18 @@ public:
 		// ...but we overwrite it (optional) with a perspective projection.
 		P = glm::perspective((float)(3.14159 / 4.), (float)((float)width/ (float)height), 0.01f, 100000.0f); //so much type casting... GLM metods are quite funny ones
 
-		//animation with the model matrix:
-		static float w = 0.0;
-		w += 1.0 * frametime;//rotation angle
-		float trans = 0;// sin(t) * 2;
-		w = 0.6;
-		glm::mat4 RotateY = glm::rotate(glm::mat4(1.0f), w, glm::vec3(0.0f, 1.0f, 0.0f));
-		float angle = 3.1415926/2.0;
-		glm::mat4 RotateX = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f));
-		glm::mat4 TransZ = glm::translate(glm::mat4(1.0f), -mycam.pos);
-		glm::mat4 S = glm::scale(glm::mat4(1.0f), glm::vec3(0.8f, 0.8f, 0.8f));
+      prog_sphere->bind();
+      float scale = (1 + beats) / 5;
+      glm::mat4 ScaleSphere = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, scale));
+      mat4 TransZ = glm::translate(glm::mat4(1.0f), vec3(0, 0, -3));
+      M = TransZ* ScaleSphere;
+      glUniformMatrix4fv(prog_sphere->getUniform("M"), 1, GL_FALSE, &M[0][0]);
+      glUniformMatrix4fv(prog_sphere->getUniform("P"), 1, GL_FALSE, &P[0][0]);
+      glUniformMatrix4fv(prog_sphere->getUniform("V"), 1, GL_FALSE, &V[0][0]);
+      sphere->draw(prog_sphere, FALSE);
 
-		M =  TransZ *RotateY * RotateX * S;
-
-		// Draw the box using GLSL.
-		skyprog->bind();
-
-		
-		//send the matrices to the shaders
-		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, &P[0][0]);
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, &V[0][0]);
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, &M[0][0]);
-
-		glActiveTexture(GL_TEXTURE0);
-		if(renderstate==1)
-			glBindTexture(GL_TEXTURE_2D, Texture);
-		else if (renderstate == 2)
-			glBindTexture(GL_TEXTURE_2D, Texture2);
-		
-		glDisable(GL_DEPTH_TEST);
-		shape->draw(prog,FALSE);
-		glEnable(GL_DEPTH_TEST);
-
-
-	
-
-			heightshader->bind();
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glm::mat4 TransY = glm::translate(glm::mat4(1.0f), glm::vec3(-500.0f, -9.0f, -500));
-			M = TransY;
-			glUniformMatrix4fv(heightshader->getUniform("M"), 1, GL_FALSE, &M[0][0]);
-			glUniformMatrix4fv(heightshader->getUniform("P"), 1, GL_FALSE, &P[0][0]);
-			glUniformMatrix4fv(heightshader->getUniform("V"), 1, GL_FALSE, &V[0][0]);
-
-
-			vec3 offset = mycam.pos;
-			offset.y = 0;
-			offset.x = (int)offset.x;
-			offset.z = (int)offset.z;
-			offset = vec3(0, 0, 0);
-			vec3 bg = vec3(254. / 255., 225. / 255., 168. / 255.);
-			if (renderstate == 2)
-				bg = vec3(49. / 255., 88. / 255., 114. / 255.);
-			glUniform3fv(heightshader->getUniform("camoff"), 1, &offset[0]);
-			glUniform3fv(heightshader->getUniform("campos"), 1, &mycam.pos[0]);
-			glUniform3fv(heightshader->getUniform("bgcolor"), 1, &bg[0]);
-			glUniform1i(heightshader->getUniform("renderstate"), renderstate);
-
-			glBindVertexArray(VertexArrayID);
-			//
-			glActiveTexture(GL_TEXTURE0);
-
-
-
-
-			//glBindTexture(GL_TEXTURE_2D, HeightTex);
-			glBindTexture(GL_TEXTURE_2D, AudioTex);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, HeightTex);
-		
-			glDrawArrays(GL_TRIANGLES, 0, MESHSIZE*MESHSIZE * 6);			
-			heightshader->unbind();
-		
-		if (renderstate == 2)
-		{
-			linesshader->bind();
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glm::mat4 TransY = glm::translate(glm::mat4(1.0f), glm::vec3(-500.0f, -9.0f+0.2, -500));
-			M = TransY;
-			glUniformMatrix4fv(linesshader->getUniform("M"), 1, GL_FALSE, &M[0][0]);
-			glUniformMatrix4fv(linesshader->getUniform("P"), 1, GL_FALSE, &P[0][0]);
-			glUniformMatrix4fv(linesshader->getUniform("V"), 1, GL_FALSE, &V[0][0]);
-
-
-			vec3 offset = mycam.pos;
-			offset.y = 0;
-			offset.x = (int)offset.x;
-			offset.z = (int)offset.z;
-			offset = vec3(0, 0, 0);
-			vec3 bg = vec3(254. / 255., 225. / 255., 168. / 255.);
-			if (renderstate == 2)
-				bg = vec3(49. / 255., 88. / 255., 114. / 255.);
-			glUniform3fv(linesshader->getUniform("camoff"), 1, &offset[0]);
-			glUniform3fv(linesshader->getUniform("campos"), 1, &mycam.pos[0]);
-			glUniform3fv(linesshader->getUniform("bgcolor"), 1, &bg[0]);
-
-			glBindVertexArray(VertexArrayID);
-			//
-			glActiveTexture(GL_TEXTURE0);
-
-			//glBindTexture(GL_TEXTURE_2D, HeightTex);
-			glBindTexture(GL_TEXTURE_2D, AudioTex);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, HeightTex);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufferIDBox);
-			glDrawElements(GL_LINES, MESHSIZE*MESHSIZE * 8, GL_UNSIGNED_INT, (void*)0);
-			//glDrawArrays(GL_TRIANGLES, 0, MESHSIZE*MESHSIZE * 6);
-			linesshader->unbind();
-		}
+      prog_sphere->unbind();
 	}
-
 };
 //******************************************************************************************
 int main(int argc, char **argv)

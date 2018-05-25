@@ -47,7 +47,9 @@
     <None Include="..\resources\lines_height_frag.glsl" />
     <None Include="..\resources\lines_height_vertex.glsl" />
     <None Include="..\resources\shader_fragment.glsl" />
+    <None Include="..\resources\shader_fragment_sphere.glsl" />
     <None Include="..\resources\shader_vertex.glsl" />
+    <None Include="..\resources\shader_vertex_sphere.glsl" />
     <None Include="..\resources\sky_fragment.glsl" />
     <None Include="..\resources\sky_vertex.glsl" />
   </ItemGroup>

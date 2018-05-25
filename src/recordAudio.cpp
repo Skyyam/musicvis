@@ -160,6 +160,8 @@ HRESULT RecordAudioStream(MyAudioSink *pMySink)
 	for (UINT DeviceIndex = 0; DeviceIndex < deviceCount; DeviceIndex++)
 	{
 		string deviceName = GetDeviceName(pEndpoints, DeviceIndex, deviceId);
+      if (deviceId != 0)
+         break;
 		cout << DeviceIndex <<": " << deviceName.c_str()<< endl;
 	}
 	EXIT_ON_ERROR(hr)
