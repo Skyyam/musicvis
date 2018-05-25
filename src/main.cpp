@@ -121,7 +121,7 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
 	//float fm = 0;
 	
    float nbeats = 0;
-   int lowten = (length / 2) / 10;
+   int lowten = (length / 2) / 20;
    for (int x = 0; x < lowten; ++x)
    {
       nbeats+= sqrt(outfft[x][0] * outfft[x][0] + outfft[x][1] * outfft[x][1]);
@@ -130,10 +130,10 @@ void write_to_tex(GLuint texturebuf,int resx,int resy)
       nbeats /= (float)lowten;
    }
    float diff = nbeats - beats;
-   beats = beats + diff * 0.1;
-   if (beats < nbeats) {
+   beats += diff * 0.1;
+   /*if (beats < nbeats) {
       beats = nbeats;
-   }
+   }*/
 	/*//low
    for (int x = 0; x < resx; ++x)
 	{
@@ -492,7 +492,7 @@ public:
 		shape->init();
 */
       sphere = make_shared<Shape>();
-      sphere->loadMesh(resourceDirectory + "/sphere.obj");
+      sphere->loadMesh(resourceDirectory + "/pattern_star.obj");
       sphere->resize();
       sphere->init();
 
@@ -610,6 +610,7 @@ public:
       prog_sphere->addUniform("M");
     //  prog_sphere->addUniform("camoff");
      // prog_sphere->addUniform("campos");
+      prog_sphere->addUniform("beats");
       prog_sphere->addAttribute("vertPos");
       prog_sphere->addAttribute("vertTex");
       prog_sphere->addAttribute("vertNor");
@@ -658,11 +659,16 @@ public:
 		// ...but we overwrite it (optional) with a perspective projection.
 		P = glm::perspective((float)(3.14159 / 4.), (float)((float)width/ (float)height), 0.01f, 100000.0f); //so much type casting... GLM metods are quite funny ones
 
+      static float rotate = 0;
+
       prog_sphere->bind();
       float scale = (1 + beats) / 5;
+      glUniform1f(prog_sphere->getUniform("beats"), beats);
+      rotate += scale * 0.05;
       glm::mat4 ScaleSphere = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, scale));
+      glm::mat4 RotateSphere = glm::rotate(glm::mat4(1), rotate, glm::vec3(0, 0, 1));
       mat4 TransZ = glm::translate(glm::mat4(1.0f), vec3(0, 0, -3));
-      M = TransZ* ScaleSphere;
+      M = TransZ * ScaleSphere * RotateSphere;
       glUniformMatrix4fv(prog_sphere->getUniform("M"), 1, GL_FALSE, &M[0][0]);
       glUniformMatrix4fv(prog_sphere->getUniform("P"), 1, GL_FALSE, &P[0][0]);
       glUniformMatrix4fv(prog_sphere->getUniform("V"), 1, GL_FALSE, &V[0][0]);

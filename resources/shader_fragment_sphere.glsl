@@ -3,10 +3,16 @@ out vec4 color;
 in vec3 vertex_normal;
 in vec3 vertex_pos;
 in vec2 vertex_tex;
-
+in float bt;
 
 uniform sampler2D tex;
 uniform sampler2D tex2;
+
+float len = length(vertex_pos.xy);
+
+float rgb(float c) {
+   return (1 - len) * c;
+}
 
 void main()
 {
@@ -28,7 +34,11 @@ void main()
    color.rgb += vec3(1,1,1)*spec*3;
    color.a=1;
    */
-   color = vec4(1, 1, 1, 1);
+   float r = bt;
+   float g = 0.5 / bt;
+   float b = 1.0 - r;
+
+	color = vec4(rgb(r), rgb(g), rgb(b), 1);
    //color = vec4(vertex_normal, 1.0);
-   //color =  vec4(vertex_pos, 1.0);
+   //color += vec4(vertex_pos, 1.0);
 }

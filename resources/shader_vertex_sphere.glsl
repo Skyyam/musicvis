@@ -6,9 +6,13 @@ layout(location = 2) in vec2 vertTex;
 uniform mat4 P;
 uniform mat4 V;
 uniform mat4 M;
+uniform float beats;
+
 out vec3 vertex_pos;
 out vec3 vertex_normal;
 out vec2 vertex_tex;
+out float bt;
+
 void main()
 {
 	vertex_normal = vec4(M * vec4(vertNor,0.0)).xyz;
@@ -16,4 +20,5 @@ void main()
 	vertex_pos = tpos.xyz;
 	gl_Position = P * V * tpos;
 	vertex_tex = vertTex;
+   bt = beats;
 }
